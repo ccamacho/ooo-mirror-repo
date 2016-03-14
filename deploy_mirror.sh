@@ -1,6 +1,6 @@
 #!/bin/bash
 #Usage:
-#MIRROR_HOST=dell-per610-01.lab.eng.brq.redhat.com ./deploy_mirror.sh
+#MIRROR_HOST=yourhosthere ./deploy_mirror.sh
 
 set -euo pipefail
 
