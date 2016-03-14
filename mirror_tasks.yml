@@ -1,0 +1,82 @@
+#Ansible playbook with the steps to create a repository mirror
+---
+- name: Mirroring a repo to custom location
+  hosts: '{{ target }}'
+  user: root
+  sudo: yes
+
+
+  vars:
+    default_port: 8080
+    default_reponame: tripleo_repo
+    default_path: /var/www/{{ default_reponame }}
+    repository_list:
+      -
+        source_host: "mirrors.cat.pdx.edu"
+        source_folder: "/centos/7/virt/x86_64/"
+        cron_hour: "10,20"
+      - 
+        source_host: "mirrors.cat.pdx.edu"
+        source_folder: "/centos/7/centosplus/"
+        cron_hour: "11,21"        
+      -
+        source_host: "mirrors.cat.pdx.edu"
+        source_folder: "/debian/dists/jessie/"
+        cron_hour: "12,22"        
+      -
+        source_host: "mirrors.cat.pdx.edu"
+        source_folder: "/raspbian/installer/"
+        cron_hour: "13,23"        
+
+  tasks:
+  #Steps for preparing the web server for the repo.
+    - name: Install Apache
+      action: yum pkg=httpd state=installed
+
+    - name: Stop Apache service
+      action: service name=httpd state=stopped
+
+    - name: Creates root repository path
+      file: path={{ default_path }} state=directory
+
+    - name: Deploy virtual host to the httpd config
+      template: src={{ default_reponame }}.conf.j2 dest=/etc/httpd/conf.d/{{ default_reponame }}.conf
+
+    - name: Start Apache service
+      action: service name=httpd state=started enabled=true
+
+  #Syncing the data from the sources repos by installing the crontabs
+    - name: Install rsync
+      action: yum pkg=rsync state=installed
+
+    - name: Install createrepo
+      action: yum pkg=createrepo state=installed
+
+    - name: Creates root repository folders
+      file: path={{ default_path }}{{ item.source_folder }} state=directory
+      with_items: repository_list
+
+    - name: Initialize  root repos
+      command: createrepo {{ default_path }}{{ item.source_folder }}
+      with_items: repository_list
+
+
+    - name: Installing cron jobs for syncing the repository sources
+      cron:
+        name="Installing cron for {{ item.source_host }}{{ item.source_folder }}"
+        minute="0"
+        hour="{{ item.cron_hour }}"
+        job="
+         rsync -avzP 
+         --delete
+         rsync://{{ item.source_host }}{{ item.source_folder }} {{ default_path }}{{ item.source_folder }}
+         ;
+         createrepo --update {{ default_path }}{{ item.source_folder }}
+        "
+      with_items: repository_list
+
+
+
+
+
+

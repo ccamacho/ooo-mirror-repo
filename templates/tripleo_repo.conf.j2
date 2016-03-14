@@ -1,0 +1,11 @@
+Listen {{ default_port }} 
+<VirtualHost *:{{ default_port }}>
+  ServerAdmin webmaster@example.org
+  ErrorLog /var/log/httpd/{{ default_reponame }}.err
+  CustomLog /var/log/httpd/{{ default_reponame }}.log combined
+  DocumentRoot {{ default_path }}
+  <Directory "{{ default_path }}">
+    Order allow,deny
+    Allow from all
+  </Directory>
+</VirtualHost>
